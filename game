@@ -1,0 +1,84 @@
+#!/usr/bin/env ruby
+
+class Game
+  attr_reader :game_over
+
+  def initialize(input)
+    @starting_amount = input[0].to_i
+    @baseline_bet = input[1].to_i
+    @number_of_rounds = input[2].to_i
+    @results = input[3].split(" ").map(&:to_i)
+    @state = []
+    @current_round = 0
+    @game_over = false
+
+    Round.baseline_bet = @baseline_bet
+  end
+
+  def play_round
+    if @state.empty?
+      @state << Round.new(@starting_amount, @baseline_bet, current_result)
+    else
+      previous_round = @state.last
+      @state << previous_round.next_round(current_result)
+      @game_over = broke? || finished?
+    end
+
+    @current_round += 1
+  end
+
+  def current_result
+    @results[@current_round]
+  end
+
+  def broke?
+    @state.last.money <= 0
+  end
+
+  def finished?
+    @current_round >= @number_of_rounds
+  end
+
+  def output_result
+    if broke?
+      puts "BROKE"
+    else
+      puts @state.last.money
+    end
+  end
+end
+
+class Round
+  class << self
+    attr_accessor :baseline_bet
+  end
+
+  def initialize(money, bet, baseline_bet, result)
+    @money = money
+    @bet = bet
+    @result = result
+  end
+
+  def win?
+    @result == 1
+  end
+
+  def next_round(next_round_result)
+    Round.new(next_round_starting_money, next_round_bet, next_round_result)
+  end
+
+  def next_round_starting_money
+    win? ? @money + @bet : @money - @bet
+  end
+
+  def next_round_bet
+    win? ? [baseline_bet, next_round_starting_money].min : [2 * @bet, next_round_starting_money].min
+  end
+end
+
+input_path = ARGV[0]
+input = File.readlines(input_path).map(&:chomp)
+
+g = Game.new(input)
+g.play_round until g.game_over
+g.output_result
